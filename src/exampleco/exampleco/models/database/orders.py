@@ -3,7 +3,8 @@ from marshmallow import fields, validate
 from marshmallow_sqlalchemy import SQLAlchemySchema
 from sqlalchemy.orm import relationship
 
-from . import Base
+from . import Base, Session
+from .order_items import OrderItems, OrderItemSchema
 
 
 class Order(Base):
@@ -14,13 +15,12 @@ class Order(Base):
     description = Column(TEXT, nullable=True)
     price = Column(Float, nullable=False)
     is_active = Column(Boolean, default=True)
-    order_items = relationship("OrderItems", back_populates="order")
+    order_items = relationship(OrderItems, back_populates="order", uselist=True)
     created_on = Column(TIMESTAMP, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     modified_on = Column(
         TIMESTAMP,
         nullable=False,
-        server_default=text(
-            'CURRENT_TIMESTAMP'),
+        server_default=text('CURRENT_TIMESTAMP'),
         server_onupdate=text('CURRENT_TIMESTAMP')
     )
 
@@ -31,6 +31,7 @@ class Order(Base):
 class OrderSchema(SQLAlchemySchema):
     class Meta:
         model = Order
+        sqla_session = Session
         load_instance = True
 
     id = fields.Integer()
@@ -39,3 +40,4 @@ class OrderSchema(SQLAlchemySchema):
     price = fields.Float(required=True)
     created_on = fields.DateTime()
     modified_on = fields.DateTime()
+    order_items = fields.List(fields.Nested(OrderItemSchema))

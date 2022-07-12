@@ -28,3 +28,27 @@ functions:
       - httpApi:
           path: /orders
           method: get
+  get_order_by_id:
+    handler: src.exampleco.exampleco.handlers.order_handler.get_order_by_id
+    events:
+      - httpApi:
+          path: /orders/{order_id}
+          method: get
+  create_order:
+    handler: src.exampleco.exampleco.handlers.order_handler.create_order
+    events:
+      - httpApi:
+          path: /orders
+          method: post
+  update_order:
+    handler: src.exampleco.exampleco.handlers.order_handler.update_order
+    events:
+      - httpApi:
+          path: /orders
+          method: put
+  delete_order:
+    handler: src.exampleco.exampleco.handlers.order_handler.delete_order
+    events:
+      - httpApi:
+          path: /orders/{order_id}
+          method: delete

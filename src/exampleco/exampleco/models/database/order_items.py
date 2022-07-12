@@ -3,7 +3,7 @@ from marshmallow import fields
 from marshmallow_sqlalchemy import SQLAlchemySchema
 from sqlalchemy.orm import relationship
 
-from . import Base
+from . import Base, Session
 
 
 class OrderItems(Base):
@@ -20,11 +20,10 @@ class OrderItems(Base):
     modified_on = Column(
         TIMESTAMP,
         nullable=False,
-        server_default=text(
-            'CURRENT_TIMESTAMP'),
+        server_default=text('CURRENT_TIMESTAMP'),
         server_onupdate=text('CURRENT_TIMESTAMP')
     )
-    parent = relationship("Order", back_populates="order_items")
+    order = relationship("Order", back_populates="order_items")
     service = relationship('Service')
 
     def __repr__(self) -> str:
@@ -34,6 +33,7 @@ class OrderItems(Base):
 class OrderItemSchema(SQLAlchemySchema):
     class Meta:
         model = OrderItems
+        sqla_session = Session
         load_instance = True
 
     id = fields.Integer()
@@ -41,6 +41,6 @@ class OrderItemSchema(SQLAlchemySchema):
     description = fields.String()
     price = fields.Float(required=True)
     order_id = fields.Integer()
-    service_id = fields.Integer()
+    service_id = fields.Integer(required=True)
     created_on = fields.DateTime()
     modified_on = fields.DateTime()
