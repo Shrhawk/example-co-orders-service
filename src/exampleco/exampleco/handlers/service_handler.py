@@ -1,7 +1,7 @@
 import json
 
-from exampleco.models.database import Session
-from exampleco.models.database.services import Service, ServiceSchema
+from src.exampleco.exampleco.models.database import Session
+from src.exampleco.exampleco.models.database.services import Service, ServiceSchema
 from src.exampleco.exampleco.constants import OK_STATUS_CODE, BAD_REQUEST_STATUS_CODE
 
 
