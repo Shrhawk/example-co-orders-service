@@ -7,8 +7,21 @@ provider:
   name: aws
   runtime: python3.8
   lambdaHashingVersion: 20201221
+  timeout: 30
 
 functions:
+  get_service_by_id:
+    handler: src.exampleco.exampleco.handlers.service_handler.get_service_by_id
+    events:
+      - httpApi:
+          path: /service-by-id
+          method: get
+  get_services:
+    handler: src.exampleco.exampleco.handlers.service_handler.get_services
+    events:
+      - httpApi:
+          path: /services
+          method: get
   get_all_orders:
     handler: handler.get_all_orders
     events:

@@ -14,7 +14,7 @@ Base = declarative_base()
 session_maker = sessionmaker()
 
 try:
-    engine = create_engine('mysql+pymysql://{}:{}@{}/{}'.format('admin', 'password', 'localhost', 'db'))
+    engine = create_engine('mysql+pymysql://{}:{}@{}/{}'.format('admin', 'password', 'localhost:3309', 'db'))
     engine.connect()
 except SQLAlchemyError as error:
     logger.error("Error connecting to DB")
