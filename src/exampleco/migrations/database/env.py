@@ -6,6 +6,8 @@ from sqlalchemy import pool
 from alembic import context
 
 from exampleco.models.database.services import Service
+from exampleco.models.database.orders import Order
+from exampleco.models.database.order_items import OrderItems
 from exampleco.models.database import Base
 
 # this is the Alembic Config object, which provides
