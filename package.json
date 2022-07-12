@@ -1,0 +1,11 @@
+{
+  "name": "take-home-assessment",
+  "description": "",
+  "version": "1.0.0",
+  "dependencies": {
+    "serverless": "^2.70.0"
+  },
+  "devDependencies": {
+    "serverless-offline": "^8.2.0"
+  }
+}

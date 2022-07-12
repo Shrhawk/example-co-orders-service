@@ -1,0 +1,17 @@
+service: take-home-assessment
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: python3.8
+  lambdaHashingVersion: 20201221
+
+functions:
+  get_all_orders:
+    handler: handler.get_all_orders
+    events:
+      - httpApi:
+          path: /orders
+          method: get
