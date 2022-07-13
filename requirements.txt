@@ -22,3 +22,5 @@ toml==0.10.2
 wcwidth==0.2.5
 wrapt==1.12.1
 zipp==3.8.0
+setuptools~=62.4.0
+requests~=2.28.1

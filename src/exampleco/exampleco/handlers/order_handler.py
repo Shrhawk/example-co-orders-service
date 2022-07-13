@@ -1,6 +1,8 @@
+import datetime
 import json
 
 from marshmallow import ValidationError
+from sqlalchemy import extract
 
 from src.exampleco.exampleco.constants import (
     NOT_FOUND_STATUS_CODE,
@@ -64,6 +66,7 @@ def create_order(event, context):
     Returns:
         Returns order and its order items which or created.
     """
+    errors = {}
     order_data = event.get('body', {}) or {}
     order_data = json.loads(order_data)
     orders_schema = OrderSchema(many=False)
@@ -75,16 +78,18 @@ def create_order(event, context):
     all_services = {}
     for service in services:
         all_services[service.id] = service
-    if not order:
-        result = {"message": "Order not found"}
-        return {"statusCode": NOT_FOUND_STATUS_CODE, "body": json.dumps(result)}
+    if not order.order_items:
+        result = {"message": "order_items is mandatory"}
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(result)}
     order_item_objects = []
     order_object = Order(
         name=order.name,
         description=order.description,
         price=order.price
     )
-    for order_item in order.order_items:
+    for order_item_index, order_item in enumerate(order.order_items):
+        if not all_services.get(order_item.service_id):
+            errors[str(order_item_index)] = {"service_id": ["Service Id is invalid"]}
         order_item_objects.append(OrderItems(
             name=order_item.name,
             description=order_item.description,
@@ -92,6 +97,9 @@ def create_order(event, context):
             order=order_object,
             service=all_services.get(order_item.service_id)
         ))
+    if errors:
+        result = {"order_items": errors}
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(result)}
     order_object.order_items = order_item_objects
     Session.add(order_object)
     Session.commit()
@@ -107,6 +115,7 @@ def update_order(event, context):
     Returns:
         Returns order and its order items which or update.
     """
+    errors = {}
     order_data = event.get('body', {}) or {}
     order_data = json.loads(order_data)
     if not order_data.get("id") or not str(order_data.get("id")).isdigit():
@@ -117,7 +126,17 @@ def update_order(event, context):
         return response
     order = Session.query(Order).filter(Order.id == order_data.get("id"), Order.is_active).first()
     if not order:
-        return {"statusCode": NOT_FOUND_STATUS_CODE, "body": json.dumps({"message": "Order not found"})}
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps({"message": "Order not found"})}
+    services = Session.query(Service).all()
+    all_services = {}
+    for service in services:
+        all_services[service.id] = service
+    for order_item_index, order_item in enumerate(order_data.get("order_items")):
+        if not all_services.get(order_item.get("service_id")):
+            errors[str(order_item_index)] = {"service_id": ["Service Id is invalid"]}
+    if errors:
+        result = {"order_items": errors}
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(result)}
     orders_schema = OrderSchema(many=False)
     try:
         order = orders_schema.load(order_data, instance=order)
@@ -125,7 +144,7 @@ def update_order(event, context):
         return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(err.messages)}
     Session.add(order)
     Session.commit()
-    response = {"statusCode": CREATED_STATUS_CODE, "body": json.dumps(order_data)}
+    response = {"statusCode": CREATED_STATUS_CODE, "body": json.dumps(orders_schema.dump(order))}
     return response
 
 

@@ -40,4 +40,4 @@ class OrderSchema(SQLAlchemySchema):
     price = fields.Float(required=True)
     created_on = fields.DateTime()
     modified_on = fields.DateTime()
-    order_items = fields.List(fields.Nested(OrderItemSchema))
+    order_items = fields.List(fields.Nested(OrderItemSchema), required=True)
