@@ -28,6 +28,12 @@ functions:
       - httpApi:
           path: /orders
           method: get
+  get_order_analytics:
+    handler: src.exampleco.exampleco.handlers.order_handler.get_order_analytics
+    events:
+      - httpApi:
+          path: /orders-analytics
+          method: get
   get_order_by_id:
     handler: src.exampleco.exampleco.handlers.order_handler.get_order_by_id
     events:

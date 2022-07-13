@@ -1,8 +1,7 @@
-import datetime
 import json
 
 from marshmallow import ValidationError
-from sqlalchemy import extract
+from sqlalchemy import extract, func
 
 from src.exampleco.exampleco.constants import (
     NOT_FOUND_STATUS_CODE,
@@ -10,8 +9,11 @@ from src.exampleco.exampleco.constants import (
     OK_STATUS_CODE,
     UPDATE_STATUS_CODE,
     UNPROCESSABLE_ENTITY_STATUS_CODE,
-    BAD_REQUEST_STATUS_CODE
+    BAD_REQUEST_STATUS_CODE,
+    THIS_YEAR,
+    THIS_MONTH, THIS_WEEK
 )
+from src.exampleco.exampleco.helpers import time_period_to_time_convertor
 from src.exampleco.exampleco.models.database import Session
 from src.exampleco.exampleco.models.database.order_items import OrderItems
 from src.exampleco.exampleco.models.database.orders import Order, OrderSchema
@@ -31,6 +33,38 @@ def get_all_orders(event, context):
     orders = Session.query(Order).filter(Order.is_active).all()
     results = orders_schema.dump(orders)
     response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(results)}
+    return response
+
+
+# pylint: disable=unused-argument
+def get_order_analytics(event, context):
+    """
+    Example function that demonstrates order analytics from database
+
+    Returns:
+        Returns analytics of all orders pulled from the database.
+    """
+    data = event.get('queryStringParameters', {}) or {}
+    time_period = data.get('time_period')
+    if not time_period or time_period not in [THIS_WEEK, THIS_MONTH, THIS_YEAR]:
+        response = {
+            "statusCode": BAD_REQUEST_STATUS_CODE,
+            "body": json.dumps({"message": "time_period is required with valid string"})
+        }
+        return response
+    filters = [Order.is_active]
+    date = time_period_to_time_convertor(time_period)
+    if time_period == THIS_YEAR:
+        filters.append(extract('year', Order.created_on) == date)
+        query = Session.query(func.month(Order.created_on), func.count(Order.created_on))
+    elif time_period == THIS_MONTH:
+        filters.append(extract('month', Order.created_on) == date)
+        query = Session.query(func.day(Order.created_on), func.count(Order.created_on))
+    else:
+        filters.append(extract('week', Order.created_on) == date)
+        query = Session.query(func.day(Order.created_on), func.count(Order.created_on))
+    result = query.filter(*filters).group_by(Order.created_on).distinct(Order.id).all()
+    response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(result)}
     return response
 
 

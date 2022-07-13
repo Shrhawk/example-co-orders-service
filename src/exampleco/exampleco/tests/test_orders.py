@@ -1,3 +1,5 @@
+import datetime
+from freezegun import freeze_time
 from src.exampleco.exampleco.constants import OK_STATUS_CODE, BAD_REQUEST_STATUS_CODE, CREATED_STATUS_CODE, \
     UNPROCESSABLE_ENTITY_STATUS_CODE, UPDATE_STATUS_CODE, NOT_FOUND_STATUS_CODE
 from src.exampleco.exampleco.models.database import Session
@@ -640,3 +642,231 @@ class TestOrders(TestCase):
         """
         response = self.client.delete(self.base_url + "/orders/")
         assert response.status_code == NOT_FOUND_STATUS_CODE
+
+    @freeze_time(datetime.datetime.utcnow().replace(year=2022, month=1, hour=0, minute=0, second=0))
+    def test_get_order_analytics_by_year(self):
+        """
+        Test GET Orders analytics by year
+        """
+        order = Order(  # noqa
+            name="Order 1",
+            description="Order Description",
+            price=10,
+            created_on=datetime.datetime.now().replace(year=2022, month=1)
+        )
+        service = Service(
+            name="Service 1",
+            description="Service Description",
+            price=10
+        )
+        order_item = OrderItems(
+            name="Order Item 1",
+            description="Order Item Description",
+            price=10,
+            order=order,
+            service=service
+        )
+        order_item2 = OrderItems(
+            name="Order Item 2",
+            description="Order Item Description 2",
+            price=10,
+            order=order,
+            service=service
+        )
+        order.order_items = [order_item, order_item2]
+        Session.add(service)
+        Session.add(order)
+        order2 = Order(
+            name="Order 2",
+            description="Order Description 2",
+            price=20,
+            created_on=datetime.datetime.now().replace(year=2022, month=2)
+        )
+        order_item3 = OrderItems(
+            name="Order Item 3",
+            description="Order Item Description",
+            price=10,
+            order=order2,
+            service=service
+        )
+        order2.order_items = [order_item3]
+        Session.add(order2)
+        order3 = Order(
+            name="Order 3",
+            description="Order Description 3",
+            price=20,
+            created_on=datetime.datetime.now().replace(year=2021)
+        )
+        order_item4 = OrderItems(
+            name="Order Item 4",
+            description="Order Item Description",
+            price=10,
+            order=order3,
+            service=service
+        )
+        order3.order_items = [order_item4]
+        Session.add(order3)
+        Session.commit()
+        response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_YEAR"})
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[1, 1], [2, 1]]
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
+        Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
+
+    @freeze_time(datetime.datetime.utcnow().replace(year=2022, month=2, hour=0, minute=0, second=0))
+    def test_get_order_analytics_by_month(self):
+        """
+        Test GET Orders analytics by month
+        """
+        order = Order(  # noqa
+            name="Order 1",
+            description="Order Description",
+            price=10,
+            created_on=datetime.datetime.now().replace(month=1)
+        )
+        service = Service(
+            name="Service 1",
+            description="Service Description",
+            price=10
+        )
+        order_item = OrderItems(
+            name="Order Item 1",
+            description="Order Item Description",
+            price=10,
+            order=order,
+            service=service
+        )
+        order_item2 = OrderItems(
+            name="Order Item 2",
+            description="Order Item Description 2",
+            price=10,
+            order=order,
+            service=service
+        )
+        order.order_items = [order_item, order_item2]
+        Session.add(service)
+        Session.add(order)
+        order2 = Order(
+            name="Order 2",
+            description="Order Description 2",
+            price=20,
+            created_on=datetime.datetime.now().replace(day=3)
+        )
+        order_item3 = OrderItems(
+            name="Order Item 3",
+            description="Order Item Description",
+            price=10,
+            order=order2,
+            service=service
+        )
+        order2.order_items = [order_item3]
+        Session.add(order2)
+        order3 = Order(
+            name="Order 3",
+            description="Order Description 3",
+            price=20,
+            created_on=datetime.datetime.now().replace(day=7)
+        )
+        order_item4 = OrderItems(
+            name="Order Item 4",
+            description="Order Item Description",
+            price=10,
+            order=order3,
+            service=service
+        )
+        order3.order_items = [order_item4]
+        Session.add(order3)
+        Session.commit()
+        response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_MONTH"})
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[3, 1], [7, 1]]
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
+        Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
+
+    @freeze_time(datetime.datetime.today().replace(year=2022, month=1, day=13, hour=0, minute=0, second=0))
+    def test_get_order_analytics_by_week(self):
+        """
+        Test GET Orders analytics by week
+        """
+        order = Order(  # noqa
+            name="Order 1",
+            description="Order Description",
+            price=10,
+            created_on=datetime.datetime.now().replace(day=1)
+        )
+        service = Service(
+            name="Service 1",
+            description="Service Description",
+            price=10
+        )
+        order_item = OrderItems(
+            name="Order Item 1",
+            description="Order Item Description",
+            price=10,
+            order=order,
+            service=service
+        )
+        order_item2 = OrderItems(
+            name="Order Item 2",
+            description="Order Item Description 2",
+            price=10,
+            order=order,
+            service=service
+        )
+        order.order_items = [order_item, order_item2]
+        Session.add(service)
+        Session.add(order)
+        order2 = Order(
+            name="Order 2",
+            description="Order Description 2",
+            price=20,
+            created_on=datetime.datetime.now().replace(month=1, day=13)
+        )
+        order_item3 = OrderItems(
+            name="Order Item 3",
+            description="Order Item Description",
+            price=10,
+            order=order2,
+            service=service
+        )
+        order2.order_items = [order_item3]
+        Session.add(order2)
+        order3 = Order(
+            name="Order 3",
+            description="Order Description 3",
+            price=20,
+            created_on=datetime.datetime.now().replace(month=1, day=14)
+        )
+        order_item4 = OrderItems(
+            name="Order Item 4",
+            description="Order Item Description",
+            price=10,
+            order=order3,
+            service=service
+        )
+        order3.order_items = [order_item4]
+        Session.add(order3)
+        Session.commit()
+        response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_WEEK"})
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[13, 1], [14, 1]]
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
+        Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
+
+    def test_get_order_analytics_with_invalid_time_period(self):
+        """
+        Test GET Orders analytics invalid time period
+        """
+        response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "INVALID"})
+        response_data = response.json()
+        assert response.status_code == BAD_REQUEST_STATUS_CODE
+        assert response_data == {'message': 'time_period is required with valid string'}
