@@ -1,7 +1,12 @@
 import datetime
-from freezegun import freeze_time
-from src.exampleco.exampleco.constants import OK_STATUS_CODE, BAD_REQUEST_STATUS_CODE, CREATED_STATUS_CODE, \
-    UNPROCESSABLE_ENTITY_STATUS_CODE, UPDATE_STATUS_CODE, NOT_FOUND_STATUS_CODE
+from src.exampleco.exampleco.constants import (
+    OK_STATUS_CODE,
+    BAD_REQUEST_STATUS_CODE,
+    CREATED_STATUS_CODE,
+    UNPROCESSABLE_ENTITY_STATUS_CODE,
+    UPDATE_STATUS_CODE,
+    NOT_FOUND_STATUS_CODE
+)
 from src.exampleco.exampleco.models.database import Session
 from src.exampleco.exampleco.models.database.order_items import OrderItems
 from src.exampleco.exampleco.models.database.orders import Order
@@ -56,9 +61,13 @@ class TestOrders(TestCase):
         Session.add(order)
         Session.commit()
         response = self.client.get(self.base_url + "/orders")
+        Session.query(OrderItems).filter(OrderItems.order_id == order.id).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id == order.id).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
-        assert len(response_data) == 1
+        assert len(response_data) >= 1
         assert response_data[0]["name"] == "Order 1"  # noqa
         assert response_data[0]["description"] == "Order Description"
         assert response_data[0]["price"] == 10
@@ -68,10 +77,6 @@ class TestOrders(TestCase):
         assert response_data[0]["order_items"][1]["name"] == "Order Item 2"
         assert response_data[0]["order_items"][1]["description"] == "Order Item Description 2"
         assert response_data[0]["order_items"][1]["price"] == 10
-        Session.query(OrderItems).filter(OrderItems.order_id == order.id).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id == order.id).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_get_orders_with_more_than_one_data_in_db(self):
         """
@@ -120,6 +125,10 @@ class TestOrders(TestCase):
         Session.add(order2)
         Session.commit()
         response = self.client.get(self.base_url + "/orders")
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id])).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id.in_([order.id, order2.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
         assert len(response_data) == 2
@@ -138,10 +147,6 @@ class TestOrders(TestCase):
         assert response_data[1]["order_items"][0]["name"] == "Order Item 3"
         assert response_data[1]["order_items"][0]["description"] == "Order Item Description"
         assert response_data[1]["order_items"][0]["price"] == 10
-        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id])).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id.in_([order.id, order2.id])).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_get_order_by_id_without_any_data_in_db(self):
         """
@@ -151,7 +156,7 @@ class TestOrders(TestCase):
         response = self.client.get(self.base_url + "/orders/" + str(1))
         response_data = response.json()
         assert response.status_code == NOT_FOUND_STATUS_CODE
-        assert not response_data
+        assert response_data == {'message': 'Order not found'}
 
     def test_get_order_by_id_with_valid_id(self):
         """
@@ -200,6 +205,10 @@ class TestOrders(TestCase):
         Session.add(order2)
         Session.commit()
         response = self.client.get(self.base_url + "/orders/" + str(order2.id))
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id])).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id.in_([order.id, order2.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
         assert response_data["name"] == "Order 2"
@@ -208,10 +217,6 @@ class TestOrders(TestCase):
         assert response_data["order_items"][0]["name"] == "Order Item 3"
         assert response_data["order_items"][0]["description"] == "Order Item Description"
         assert response_data["order_items"][0]["price"] == 10
-        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id])).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id.in_([order.id, order2.id])).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_get_order_by_id_with_invalid_id(self):
         """
@@ -239,13 +244,13 @@ class TestOrders(TestCase):
         Session.add(order2)
         Session.commit()
         response = self.client.get(self.base_url + "/orders/" + str(99999))
-        response_data = response.json()
-        assert response.status_code == NOT_FOUND_STATUS_CODE
-        assert response_data == {"message": "Order not found"}
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order2.id])).delete(synchronize_session=False)
         Session.query(Order).filter(Order.id.in_([order2.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        response_data = response.json()
+        assert response.status_code == NOT_FOUND_STATUS_CODE
+        assert response_data == {"message": "Order not found"}
 
     def test_get_order_by_id_with_non_digit_order_id(self):
         """
@@ -273,13 +278,13 @@ class TestOrders(TestCase):
         Session.add(order2)
         Session.commit()
         response = self.client.get(self.base_url + "/orders/" + "nondigit")
-        response_data = response.json()
-        assert response.status_code == BAD_REQUEST_STATUS_CODE
-        assert response_data == {"message": "order_id is required with valid integer"}
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order2.id])).delete(synchronize_session=False)
         Session.query(Order).filter(Order.id.in_([order2.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        response_data = response.json()
+        assert response.status_code == BAD_REQUEST_STATUS_CODE
+        assert response_data == {"message": "order_id is required with valid integer"}
 
     def test_create_order_with_valid_data(self):
         """
@@ -309,16 +314,16 @@ class TestOrders(TestCase):
         assert response_data
         Session.expire_all()
         order = Session.query(Order).filter(Order.id == response_data.get("id")).first()
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         assert order.name == json_data["name"]
         assert order.description == json_data.get("description")
         assert order.price == json_data["price"]
         assert order.order_items[0].name == json_data["order_items"][0]["name"]
         assert order.order_items[0].description == json_data["order_items"][0].get("description")
         assert order.order_items[0].price == json_data["order_items"][0]["price"]
-        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_create_order_without_data(self):
         """
@@ -329,6 +334,7 @@ class TestOrders(TestCase):
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
         assert response_data == {
             'name': ['Missing data for required field.'],
+            'order_items': ['Missing data for required field.'],
             'price': ['Missing data for required field.']
         }
 
@@ -403,6 +409,8 @@ class TestOrders(TestCase):
             ]
         }
         response = self.client.post(self.base_url + "/orders", json=json_data)
+        Session.query(Service).filter(Service.id == service.id).delete()
+        Session.commit()
         response_data = response.json()
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
         assert response_data == {
@@ -467,15 +475,15 @@ class TestOrders(TestCase):
         }
         Session.expire_all()
         response = self.client.put(self.base_url + "/orders", json=json_data)
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         assert response.status_code == CREATED_STATUS_CODE
         Session.refresh(order)
         order_ = Session.query(Order).filter(Order.id == order.id).first()
         assert order_
         assert len(order_.order_items) == 3
-        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_put_order_with_invalid_service_id(self):
         """
@@ -535,15 +543,15 @@ class TestOrders(TestCase):
         }
         Session.expire_all()
         response = self.client.put(self.base_url + "/orders", json=json_data)
+        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
+        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
+        Session.commit()
         response_data = response.json()
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
         assert response_data == {
             'order_items': {'2': {'service_id': ['Service Id is invalid']}}
         }
-        Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
-        Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
-        Session.commit()
 
     def test_delete_order_by_id(self):
         """
@@ -621,11 +629,11 @@ class TestOrders(TestCase):
         Session.commit()
         Session.expire_all()
         response = self.client.delete(self.base_url + "/orders/" + str(order.id + 999))
-        assert response.status_code == NOT_FOUND_STATUS_CODE
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id])).delete(synchronize_session=False)
         Session.query(Order).filter(Order.id.in_([order.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        assert response.status_code == NOT_FOUND_STATUS_CODE
 
     def test_delete_order_by_id_with_nondigit_id(self):
         """
@@ -643,7 +651,6 @@ class TestOrders(TestCase):
         response = self.client.delete(self.base_url + "/orders/")
         assert response.status_code == NOT_FOUND_STATUS_CODE
 
-    @freeze_time(datetime.datetime.utcnow().replace(year=2022, month=1, hour=0, minute=0, second=0))
     def test_get_order_analytics_by_year(self):
         """
         Test GET Orders analytics by year
@@ -708,15 +715,14 @@ class TestOrders(TestCase):
         Session.add(order3)
         Session.commit()
         response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_YEAR"})
-        response_data = response.json()
-        assert response.status_code == OK_STATUS_CODE
-        assert response_data == [[1, 1], [2, 1]]
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
         Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[1, 1], [2, 1]]
 
-    @freeze_time(datetime.datetime.utcnow().replace(year=2022, month=2, hour=0, minute=0, second=0))
     def test_get_order_analytics_by_month(self):
         """
         Test GET Orders analytics by month
@@ -781,15 +787,14 @@ class TestOrders(TestCase):
         Session.add(order3)
         Session.commit()
         response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_MONTH"})
-        response_data = response.json()
-        assert response.status_code == OK_STATUS_CODE
-        assert response_data == [[3, 1], [7, 1]]
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
         Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[3, 1], [7, 1]]
 
-    @freeze_time(datetime.datetime.today().replace(year=2022, month=1, day=13, hour=0, minute=0, second=0))
     def test_get_order_analytics_by_week(self):
         """
         Test GET Orders analytics by week
@@ -798,7 +803,7 @@ class TestOrders(TestCase):
             name="Order 1",
             description="Order Description",
             price=10,
-            created_on=datetime.datetime.now().replace(day=1)
+            created_on=datetime.datetime.now().replace(month=1, day=1)
         )
         service = Service(
             name="Service 1",
@@ -826,7 +831,7 @@ class TestOrders(TestCase):
             name="Order 2",
             description="Order Description 2",
             price=20,
-            created_on=datetime.datetime.now().replace(month=1, day=13)
+            created_on=datetime.datetime.now()
         )
         order_item3 = OrderItems(
             name="Order Item 3",
@@ -841,7 +846,7 @@ class TestOrders(TestCase):
             name="Order 3",
             description="Order Description 3",
             price=20,
-            created_on=datetime.datetime.now().replace(month=1, day=14)
+            created_on=datetime.datetime.now().replace(day=datetime.datetime.now().day + 1)
         )
         order_item4 = OrderItems(
             name="Order Item 4",
@@ -854,13 +859,13 @@ class TestOrders(TestCase):
         Session.add(order3)
         Session.commit()
         response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_WEEK"})
-        response_data = response.json()
-        assert response.status_code == OK_STATUS_CODE
-        assert response_data == [[13, 1], [14, 1]]
         Session.query(OrderItems).filter(OrderItems.order_id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)  # noqa
         Session.query(Order).filter(Order.id.in_([order.id, order2.id, order3.id])).delete(synchronize_session=False)
         Session.query(Service).filter(Service.id == service.id).delete(synchronize_session=False)
         Session.commit()
+        response_data = response.json()
+        assert response.status_code == OK_STATUS_CODE
+        assert response_data == [[13, 1], [14, 1]]
 
     def test_get_order_analytics_with_invalid_time_period(self):
         """
