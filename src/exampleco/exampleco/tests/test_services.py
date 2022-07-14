@@ -83,17 +83,11 @@ class TestServices(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "service-id is required with valid integer"}
 
-    @pytest.mark.run(order=7)
+    @pytest.mark.run(order=28)
     def test_get_services_with_one_data_in_db(self):
         """
         Test GET Services with One data in database
         """
-        service = Session.query(Service).first()
-        Session.query(OrderItems).delete()
-        Session.query(Service).filter(Service.id != service.id).delete()
-        Session.query(Order).delete()
-        Session.commit()
-        Session.expire_all()
         response = self.client.get(self.base_url + "/services")
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
@@ -102,15 +96,11 @@ class TestServices(TestCase):
         assert response_data[0]["description"] == "Service Description"
         assert response_data[0]["price"] == 10
 
-    @pytest.mark.run(order=8)
+    @pytest.mark.run(order=29)
     def test_get_services_without_any_data_in_db(self):
         """
         Test GET Services without Any data in database
         """
-        Session.query(OrderItems).delete()
-        Session.query(Service).delete()
-        Session.query(Order).delete()
-        Session.commit()
         response = self.client.get(self.base_url + "/services")
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
