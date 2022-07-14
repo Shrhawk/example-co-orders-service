@@ -10,11 +10,8 @@ from src.exampleco.exampleco.constants import (
     UPDATE_STATUS_CODE,
     NOT_FOUND_STATUS_CODE
 )
-from src.exampleco.exampleco.models.database import Session
-from src.exampleco.exampleco.models.database.order_items import OrderItems
-from src.exampleco.exampleco.models.database.orders import Order
-from src.exampleco.exampleco.models.database.services import Service
-from src.exampleco.exampleco.tests.conftest import TestCase
+from src.exampleco.exampleco.models import Order, Service
+from src.exampleco.exampleco.tests.conftest import TestCase, Session
 
 
 class TestOrders(TestCase):
@@ -22,7 +19,7 @@ class TestOrders(TestCase):
     Tests for Orders Apis
     """
 
-    @pytest.mark.run(order=27)
+    @pytest.mark.run(order=2)
     def test_get_orders_without_any_data_in_db(self):
         """
         Test GET Orders without Any data in database
@@ -32,7 +29,6 @@ class TestOrders(TestCase):
         assert response.status_code == OK_STATUS_CODE
         assert not response_data
 
-    @pytest.mark.run(order=7)
     def test_get_orders_with_one_data_in_db(self):
         """
         Test GET Orders with One data in database
@@ -45,7 +41,6 @@ class TestOrders(TestCase):
         assert response_data[0]["description"] == "Order Description 2"
         assert response_data[0]["price"] == 20
 
-    @pytest.mark.run(order=8)
     def test_get_orders_with_more_than_one_data_in_db(self):
         """
         Test GET Orders with more than one data in database
@@ -64,18 +59,15 @@ class TestOrders(TestCase):
         assert response_data[1]["order_items"][0]["description"] == "Order Item Description 6"
         assert response_data[1]["order_items"][0]["price"] == 10
 
-    @pytest.mark.run(order=9)
     def test_get_order_by_id_without_any_data_in_db(self):
         """
         Test GET Orders without Any data in database
         """
-        
         response = self.client.get(self.base_url + "/orders/" + str(1))
         response_data = response.json()
         assert response.status_code == NOT_FOUND_STATUS_CODE
         assert response_data == {'message': 'Order not found'}
 
-    @pytest.mark.run(order=10)
     def test_get_order_by_id_with_valid_id(self):
         """
         Test GET Orders with data in database
@@ -91,7 +83,6 @@ class TestOrders(TestCase):
         assert response_data["order_items"][0]["description"] == "Order Item Description"
         assert response_data["order_items"][0]["price"] == 10
 
-    @pytest.mark.run(order=11)
     def test_get_order_by_id_with_invalid_id(self):
         """
         Test GET Orders with invalid order id
@@ -101,7 +92,6 @@ class TestOrders(TestCase):
         assert response.status_code == NOT_FOUND_STATUS_CODE
         assert response_data == {"message": "Order not found"}
 
-    @pytest.mark.run(order=12)
     def test_get_order_by_id_with_non_digit_order_id(self):
         """
         Test GET Orders with non-digit order id
@@ -111,7 +101,6 @@ class TestOrders(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "order_id is required with valid integer"}
 
-    @pytest.mark.run(order=13)
     def test_create_order_with_valid_data(self):
         """
         Test POST Orders with valid data in payload
@@ -139,7 +128,6 @@ class TestOrders(TestCase):
         assert response_data["order_items"][0].get("description") == json_data["order_items"][0].get("description")
         assert response_data["order_items"][0]["price"] == json_data["order_items"][0]["price"]
 
-    @pytest.mark.run(order=14)
     def test_create_order_without_data(self):
         """
         Test POST Orders without data in payload
@@ -147,13 +135,12 @@ class TestOrders(TestCase):
         response = self.client.post(self.base_url + "/orders", json={})
         response_data = response.json()
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
-        assert response_data == {
-            'name': ['Missing data for required field.'],
-            'order_items': ['Missing data for required field.'],
-            'price': ['Missing data for required field.']
-        }
+        assert response_data == [
+            {'loc': ['name'], 'msg': 'field required', 'type': 'value_error.missing'},
+            {'loc': ['price'], 'msg': 'field required', 'type': 'value_error.missing'},
+            {'loc': ['order_items'], 'msg': 'field required', 'type': 'value_error.missing'}
+        ]
 
-    @pytest.mark.run(order=15)
     def test_create_order_without_order_items(self):
         """
         Test POST Orders without order_items in payload
@@ -165,9 +152,9 @@ class TestOrders(TestCase):
         response = self.client.post(self.base_url + "/orders", json=json_data)
         response_data = response.json()
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
-        assert response_data == {
-            'order_items': ['Missing data for required field.']
-        }
+        assert response_data == [
+            {'loc': ['order_items'], 'msg': 'field required', 'type': 'value_error.missing'}
+        ]
 
         json_data = {
             "name": "hello",
@@ -187,17 +174,12 @@ class TestOrders(TestCase):
         response = self.client.post(self.base_url + "/orders", json=json_data)
         response_data = response.json()
         assert response.status_code == UNPROCESSABLE_ENTITY_STATUS_CODE
-        assert response_data == {
-            'order_items': {
-                '0': {
-                    'price': ['Missing data for required field.'],
-                    'service_id': ['Missing data for required field.'],
-                    'name': ['Missing data for required field.']
-                }
-            }
-        }
+        assert response_data == [
+            {'loc': ['order_items', 0, 'name'], 'msg': 'field required', 'type': 'value_error.missing'},
+            {'loc': ['order_items', 0, 'price'], 'msg': 'field required', 'type': 'value_error.missing'},
+            {'loc': ['order_items', 0, 'service_id'], 'msg': 'field required', 'type': 'value_error.missing'}
+        ]
 
-    @pytest.mark.run(order=16)
     def test_create_order_with_invalid_service_id(self):
         """
         Test POST Orders with invalid service id in payload
@@ -226,8 +208,7 @@ class TestOrders(TestCase):
             'order_items': {'1': {'service_id': ['Service Id is invalid']}}
         }
 
-    @pytest.mark.run(order=17)
-    def test_update_order_with_valid_data(self):
+    def test_update_order_with_valid_data(self, create_test_data):
         """
         Test PUT Orders with valid data in payload
         """
@@ -251,6 +232,11 @@ class TestOrders(TestCase):
                     "service_id": service.id,
                     "name": "hello 2",
                     "price": 20
+                },
+                {
+                    "service_id": service.id,
+                    "name": "hello 3",
+                    "price": 30
                 }
             ]
         }
@@ -262,7 +248,6 @@ class TestOrders(TestCase):
         assert order_
         assert len(order_.order_items) == 2
 
-    @pytest.mark.run(order=18)
     def test_put_order_with_invalid_service_id(self):
         """
         Test PUT Orders with invalid service id in payload
@@ -303,7 +288,6 @@ class TestOrders(TestCase):
             'order_items': {'2': {'service_id': ['Service Id is invalid']}}
         }
 
-    @pytest.mark.run(order=19)
     def test_delete_order_by_id_with_invalid_id(self):
         """
         Test DELETE Orders with invalid id
@@ -311,7 +295,6 @@ class TestOrders(TestCase):
         response = self.client.delete(self.base_url + "/orders/" + str(999999))
         assert response.status_code == NOT_FOUND_STATUS_CODE
 
-    @pytest.mark.run(order=20)
     def test_delete_order_by_id_with_nondigit_id(self):
         """
         Test DELETE Orders with invalid id
@@ -321,7 +304,6 @@ class TestOrders(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "order_id is required with valid integer"}
 
-    @pytest.mark.run(order=21)
     def test_delete_order_by_id_without_id(self):
         """
         Test DELETE Orders without id
@@ -329,7 +311,7 @@ class TestOrders(TestCase):
         response = self.client.delete(self.base_url + "/orders/")
         assert response.status_code == NOT_FOUND_STATUS_CODE
 
-    @pytest.mark.run(order=22)
+    @pytest.mark.run(order=4)
     def test_get_order_analytics_by_year(self):
         """
         Test GET Orders analytics by year
@@ -339,7 +321,7 @@ class TestOrders(TestCase):
         assert response.status_code == OK_STATUS_CODE
         assert response_data == [[1, 1], [2, 1], [datetime.datetime.now().month, 1]]
 
-    @pytest.mark.run(order=23)
+    @pytest.mark.run(order=5)
     def test_get_order_analytics_by_month(self):
         """
         Test GET Orders analytics by month
@@ -347,9 +329,9 @@ class TestOrders(TestCase):
         response = self.client.get(self.base_url + "/orders-analytics", params={"time_period": "THIS_MONTH"})
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
-        assert response_data == [[3, 1], [7, 1], [datetime.datetime.now().day, 1], [datetime.datetime.now().day+1, 1]]
+        assert response_data == [[3, 1], [7, 1], [datetime.datetime.now().day, 1], [datetime.datetime.now().day + 1, 1]]
 
-    @pytest.mark.run(order=24)
+    @pytest.mark.run(order=6)
     def test_get_order_analytics_by_week(self):
         """
         Test GET Orders analytics by week
@@ -359,7 +341,6 @@ class TestOrders(TestCase):
         assert response.status_code == OK_STATUS_CODE
         assert response_data == [[datetime.datetime.now().day, 1], [datetime.datetime.now().day + 1, 1]]
 
-    @pytest.mark.run(order=25)
     def test_get_order_analytics_with_invalid_time_period(self):
         """
         Test GET Orders analytics invalid time period
@@ -369,7 +350,6 @@ class TestOrders(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {'message': 'time_period is required with valid string'}
 
-    @pytest.mark.run(order=26)
     def test_delete_order_by_id(self):
         """
         Test DELETE Orders with id

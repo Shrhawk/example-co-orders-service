@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Float, Integer, String, text, TEXT, TIMESTAMP, ForeignKey, Boolean
-from marshmallow import fields
-from marshmallow_sqlalchemy import SQLAlchemySchema
 from sqlalchemy.orm import relationship
 
-from . import Base, Session
+from src.exampleco.exampleco.database import Base
 
 
 class OrderItems(Base):
@@ -28,19 +26,3 @@ class OrderItems(Base):
 
     def __repr__(self) -> str:
         return "<OrderItems(name='{}', price='{}', created_on='{}')>".format(self.name, self.price, self.created_on)
-
-
-class OrderItemSchema(SQLAlchemySchema):
-    class Meta:
-        model = OrderItems
-        sqla_session = Session
-        load_instance = True
-
-    id = fields.Integer()
-    name = fields.String(required=True)
-    description = fields.String()
-    price = fields.Float(required=True)
-    order_id = fields.Integer()
-    service_id = fields.Integer(required=True)
-    created_on = fields.DateTime()
-    modified_on = fields.DateTime()

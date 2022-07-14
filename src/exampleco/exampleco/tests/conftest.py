@@ -1,16 +1,13 @@
 import datetime
-import unittest
 
 import pytest
 import requests
 
-from src.exampleco.exampleco.models.database import Session
-from src.exampleco.exampleco.models.database.order_items import OrderItems
-from src.exampleco.exampleco.models.database.orders import Order
-from src.exampleco.exampleco.models.database.services import Service
+from src.exampleco.exampleco.database import get_session
+from src.exampleco.exampleco.models import OrderItems, Order, Service
 
 
-class TestCase(unittest.TestCase):
+class TestCase(object):
     """
     Python api test client
     :return:
@@ -19,17 +16,16 @@ class TestCase(unittest.TestCase):
     base_url = "http://0.0.0.0:8080"
 
 
-@pytest.fixture(scope="session", autouse=True)
+Session = get_session()
+
+
+@pytest.fixture(scope="function")
 def create_test_data():
     """
     create 3 new services, order-items and orders
     Returns:
 
     """
-    Session.query(OrderItems).delete()
-    Session.query(Order).delete()
-    Session.query(Service).delete()
-    Session.commit()
     service = Service(
         name="Service 1",
         description="Service Description",
@@ -150,4 +146,17 @@ def create_test_data():
     Session.add(service)
     Session.add(service2)
     Session.add(service3)
+    Session.commit()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def clear_db():
+    """
+    delete services, order-items and orders records
+    Returns:
+
+    """
+    Session.query(OrderItems).delete()
+    Session.query(Order).delete()
+    Session.query(Service).delete()
     Session.commit()

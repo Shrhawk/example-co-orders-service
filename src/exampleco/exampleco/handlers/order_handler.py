@@ -1,6 +1,6 @@
 import json
 
-from marshmallow import ValidationError
+from pydantic import ValidationError
 from sqlalchemy import extract, func
 
 from src.exampleco.exampleco.constants import (
@@ -14,10 +14,9 @@ from src.exampleco.exampleco.constants import (
     THIS_MONTH, THIS_WEEK
 )
 from src.exampleco.exampleco.helpers import time_period_to_time_convertor
-from src.exampleco.exampleco.models.database import Session
-from src.exampleco.exampleco.models.database.order_items import OrderItems
-from src.exampleco.exampleco.models.database.orders import Order, OrderSchema
-from src.exampleco.exampleco.models.database.services import Service
+from src.exampleco.exampleco.database import get_session
+from src.exampleco.exampleco.models import OrderItems, Order, Service
+from src.exampleco.exampleco.schemas import OrderSchema, OrderItemSchema
 
 
 # pylint: disable=unused-argument
@@ -28,10 +27,11 @@ def get_all_orders(event, context):
     Returns:
         Returns a list of all orders pulled from the database.
     """
-
-    orders_schema = OrderSchema(many=True)
-    orders = Session.query(Order).filter(Order.is_active).all()
-    results = orders_schema.dump(orders)
+    session = get_session()
+    orders = session.query(Order).filter(Order.is_active).all()
+    results = []
+    for order in orders:
+        results.append(json.loads(OrderSchema.from_orm(order).json()))
     response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(results)}
     return response
 
@@ -44,6 +44,7 @@ def get_order_analytics(event, context):
     Returns:
         Returns analytics of all orders pulled from the database.
     """
+    session = get_session()
     data = event.get('queryStringParameters', {}) or {}
     time_period = data.get('time_period')
     if not time_period or time_period not in [THIS_WEEK, THIS_MONTH, THIS_YEAR]:
@@ -56,13 +57,13 @@ def get_order_analytics(event, context):
     date = time_period_to_time_convertor(time_period)
     if time_period == THIS_YEAR:
         filters.append(extract('year', Order.created_on) == date)
-        query = Session.query(func.month(Order.created_on), func.count(Order.created_on))
+        query = session.query(func.month(Order.created_on), func.count(Order.created_on))
     elif time_period == THIS_MONTH:
         filters.append(extract('month', Order.created_on) == date)
-        query = Session.query(func.day(Order.created_on), func.count(Order.created_on))
+        query = session.query(func.day(Order.created_on), func.count(Order.created_on))
     else:
         filters.append(extract('week', Order.created_on) == date)
-        query = Session.query(func.day(Order.created_on), func.count(Order.created_on))
+        query = session.query(func.day(Order.created_on), func.count(Order.created_on))
     result = query.filter(*filters).group_by(Order.created_on).distinct(Order.id).all()
     response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(result)}
     return response
@@ -75,7 +76,7 @@ def get_order_by_id(event, context):
     Returns:
         Returns order and its list order_items pulled from the database.
     """
-    orders_schema = OrderSchema(many=False)
+    session = get_session()
     order_data = event.get('pathParameters', {}) or {}
     order_id = order_data.get("order_id")
     if not order_id or not str(order_id).isdigit():
@@ -84,11 +85,10 @@ def get_order_by_id(event, context):
             "body": json.dumps({"message": "order_id is required with valid integer"})
         }
         return response
-    order = Session.query(Order).filter(Order.id == order_id, Order.is_active).first()
+    order = session.query(Order).filter(Order.id == order_id, Order.is_active).first()
     if not order:
         return {"statusCode": NOT_FOUND_STATUS_CODE, "body": json.dumps({"message": "Order not found"})}
-    results = orders_schema.dump(order)
-    response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(results)}
+    response = {"statusCode": OK_STATUS_CODE, "body": OrderSchema.from_orm(order).json()}
     return response
 
 
@@ -100,15 +100,15 @@ def create_order(event, context):
     Returns:
         Returns order and its order items which or created.
     """
+    session = get_session()
     errors = {}
     order_data = event.get('body', {}) or {}
     order_data = json.loads(order_data)
-    orders_schema = OrderSchema(many=False)
     try:
-        order = orders_schema.load(order_data, transient=True)
+        order = OrderSchema(**order_data)
     except ValidationError as err:
-        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(err.messages)}
-    services = Session.query(Service).all()
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(err.errors())}
+    services = session.query(Service).all()
     all_services = {}
     for service in services:
         all_services[service.id] = service
@@ -135,9 +135,9 @@ def create_order(event, context):
         result = {"order_items": errors}
         return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(result)}
     order_object.order_items = order_item_objects
-    Session.add(order_object)
-    Session.commit()
-    response = {"statusCode": CREATED_STATUS_CODE, "body": json.dumps(order_data)}
+    session.add(order_object)
+    session.commit()
+    response = {"statusCode": CREATED_STATUS_CODE, "body": OrderSchema.from_orm(order_object).json()}
     return response
 
 
@@ -149,6 +149,7 @@ def update_order(event, context):
     Returns:
         Returns order and its order items which or update.
     """
+    session = get_session()
     errors = {}
     order_data = event.get('body', {}) or {}
     order_data = json.loads(order_data)
@@ -158,27 +159,40 @@ def update_order(event, context):
             "body": json.dumps({"message": "id is required with valid integer"})
         }
         return response
-    order = Session.query(Order).filter(Order.id == order_data.get("id"), Order.is_active).first()
-    if not order:
+    order_object = session.query(Order).filter(Order.id == order_data.get("id"), Order.is_active).first()
+    if not order_object:
         return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps({"message": "Order not found"})}
-    services = Session.query(Service).all()
-    all_services = {}
+    services = session.query(Service).all()
+    all_services, old_order_items = {}, {}
     for service in services:
         all_services[service.id] = service
+    for old_order_item in order_object.order_items:
+        old_order_items[old_order_item.id] = old_order_item
     for order_item_index, order_item in enumerate(order_data.get("order_items")):
         if not all_services.get(order_item.get("service_id")):
             errors[str(order_item_index)] = {"service_id": ["Service Id is invalid"]}
     if errors:
         result = {"order_items": errors}
         return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(result)}
-    orders_schema = OrderSchema(many=False)
     try:
-        order = orders_schema.load(order_data, instance=order)
+        order = OrderSchema(**order_data)
     except ValidationError as err:
-        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(err.messages)}
-    Session.add(order)
-    Session.commit()
-    response = {"statusCode": CREATED_STATUS_CODE, "body": json.dumps(orders_schema.dump(order))}
+        return {"statusCode": UNPROCESSABLE_ENTITY_STATUS_CODE, "body": json.dumps(err.errors())}
+    for key, value in order.dict(exclude_unset=True, exclude={"order_items"}).items():
+        setattr(order_object, key, value)
+    new_order_items = []
+    for order_item in order.order_items:
+        if old_order_items.get(order_item.id):
+            for key, value in order_item.dict(exclude_unset=True).items():
+                setattr(old_order_items.get(order_item.id), key, value)
+        else:
+            new_order_items.append(OrderItems(**order_item.dict(exclude={"id", "is_active"})))
+    old_order_items = list(old_order_items.values())
+    old_order_items.extend(new_order_items)
+    order_object.order_items = old_order_items
+    session.add(order_object)
+    session.commit()
+    response = {"statusCode": CREATED_STATUS_CODE, "body": OrderSchema.from_orm(order).json()}
     return response
 
 
@@ -189,6 +203,7 @@ def delete_order(event, context):
     Returns:
         Returns order and its order items which or delete.
     """
+    session = get_session()
     order_data = event.get('pathParameters', {}) or {}
     order_id = order_data.get("order_id")
     if not order_id or not str(order_id).isdigit():
@@ -197,10 +212,10 @@ def delete_order(event, context):
             "body": json.dumps({"message": "order_id is required with valid integer"})
         }
         return response
-    order = Session.query(Order).filter(Order.id == order_id, Order.is_active).first()
+    order = session.query(Order).filter(Order.id == order_id, Order.is_active).first()
     if not order:
         return {"statusCode": NOT_FOUND_STATUS_CODE, "body": json.dumps({"message": "Order not found"})}
     order.is_active = False
-    Session.add(order)
-    Session.commit()
+    session.add(order)
+    session.commit()
     return {"statusCode": UPDATE_STATUS_CODE}

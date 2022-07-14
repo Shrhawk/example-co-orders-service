@@ -1,20 +1,17 @@
 import pytest
 from src.exampleco.exampleco.constants import OK_STATUS_CODE, BAD_REQUEST_STATUS_CODE
-from src.exampleco.exampleco.models.database import Session
-from src.exampleco.exampleco.models.database.order_items import OrderItems
-from src.exampleco.exampleco.models.database.orders import Order
-from src.exampleco.exampleco.models.database.services import Service
-from src.exampleco.exampleco.tests.conftest import TestCase
+from src.exampleco.exampleco.models import Service
+from src.exampleco.exampleco.tests.conftest import TestCase, Session
 
 
 class TestServices(TestCase):
     """
     Tests for Services Apis
     """
-    @pytest.mark.run(order=1)
-    def test_get_services_with_more_than_one_data_in_db(self):
+    @pytest.mark.run(order=3)
+    def test_get_services_with_more_than_one_records_in_db(self, create_test_data):
         """
-        Test GET Services with more than one data in database
+        Test GET Services with more than one records in database
         """
         response = self.client.get(self.base_url + "/services")
         response_data = response.json()
@@ -30,7 +27,6 @@ class TestServices(TestCase):
         assert response_data[2]["description"] == "Service Description 3"
         assert response_data[2]["price"] == 30
 
-    @pytest.mark.run(order=2)
     def test_get_service_by_id_without_any_data_in_db(self):
         """
         Test GET Services without Any data in database
@@ -40,7 +36,6 @@ class TestServices(TestCase):
         assert response.status_code == OK_STATUS_CODE
         assert not response_data
 
-    @pytest.mark.run(order=3)
     def test_get_service_by_id_with_valid_id(self):
         """
         Test GET Services without Any data in database
@@ -53,7 +48,6 @@ class TestServices(TestCase):
         assert response_data["description"] == "Service Description"
         assert response_data["price"] == 10
 
-    @pytest.mark.run(order=4)
     def test_get_service_by_id_with_invalid_id(self):
         """
         Test GET Services with invalid service id
@@ -63,7 +57,6 @@ class TestServices(TestCase):
         assert response.status_code == OK_STATUS_CODE
         assert not response_data
 
-    @pytest.mark.run(order=5)
     def test_get_service_by_id_without_service_id(self):
         """
         Test GET Services without service id
@@ -73,7 +66,6 @@ class TestServices(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "service-id is required with valid integer"}
 
-    @pytest.mark.run(order=6)
     def test_get_service_by_id_with_non_digit_service_id(self):
         """
         Test GET Services with non-digit service id
@@ -83,7 +75,6 @@ class TestServices(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "service-id is required with valid integer"}
 
-    @pytest.mark.run(order=28)
     def test_get_services_with_one_data_in_db(self):
         """
         Test GET Services with One data in database
@@ -96,7 +87,7 @@ class TestServices(TestCase):
         assert response_data[0]["description"] == "Service Description"
         assert response_data[0]["price"] == 10
 
-    @pytest.mark.run(order=29)
+    @pytest.mark.run(order=1)
     def test_get_services_without_any_data_in_db(self):
         """
         Test GET Services without Any data in database

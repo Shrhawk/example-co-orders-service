@@ -1,7 +1,8 @@
 import json
 
-from src.exampleco.exampleco.models.database import Session
-from src.exampleco.exampleco.models.database.services import Service, ServiceSchema
+from src.exampleco.exampleco.database import get_session
+from src.exampleco.exampleco.models import Service
+from src.exampleco.exampleco.schemas import ServiceSchema
 from src.exampleco.exampleco.constants import OK_STATUS_CODE, BAD_REQUEST_STATUS_CODE
 
 
@@ -13,7 +14,7 @@ def get_service_by_id(event, context):
     Returns:
         Returns a single service
     """
-
+    session = get_session()
     params = event.get('queryStringParameters', {}) or {}
     service_id = params.get('service-id')
     if not service_id or not str(service_id).isdigit():
@@ -22,10 +23,11 @@ def get_service_by_id(event, context):
             "body": json.dumps({"message": "service-id is required with valid integer"})
         }
     else:
-        service_schema = ServiceSchema()
-        service = Session.query(Service).get(service_id)
-        results = service_schema.dump(service)
-        response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(results)}
+        service = session.query(Service).get(service_id)
+        if not service:
+            return {"statusCode": OK_STATUS_CODE, "body": json.dumps([])}
+        results = ServiceSchema.from_orm(service).json()
+        response = {"statusCode": OK_STATUS_CODE, "body": results}
     return response
 
 
@@ -37,7 +39,10 @@ def get_services(event, context):
     Returns:
         Returns a list of services
     """
-    service_schema = ServiceSchema(many=True)
-    services = Session.query(Service).all()
-    response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(service_schema.dump(services))}
+    session = get_session()
+    services = session.query(Service).all()
+    results = []
+    for service in services:
+        results.append(json.loads(ServiceSchema.from_orm(service).json()))
+    response = {"statusCode": OK_STATUS_CODE, "body": json.dumps(results)}
     return response

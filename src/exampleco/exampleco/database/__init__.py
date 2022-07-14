@@ -22,4 +22,6 @@ except SQLAlchemyError as error:
 else:
     session_maker.configure(bind=engine)
 
-Session = session_maker()
+
+def get_session():
+    return session_maker()
