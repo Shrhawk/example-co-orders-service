@@ -55,3 +55,30 @@
 ### Python tests
 
 1. Create tests for your code using pytest `make test` and ensure your code passes the pylist check `make test-style`
+
+
+### Solution Covered following points
+1. Fix migration issues (done) ==> The migrations `add_description_to_services_table` and `add_modified_on_to_services_table` was pointing to same down_revision `727577283159` so alembic was throwing error multiple heads as each migration should have unique down_revision, 
+   fixed that by correcting the `down_revision` of `add_description_to_services_table` point to the revision number of `add_modified_on_to_services_table`
+2. Create services endpoint (done)
+3. Create orders endpoint (all points done)
+4. Serverless updates (done)
+5. Python tests (done)
+6. Other improvements (changed the app structure more flexible for feature use)
+
+### How to run the migrations
+```shell
+docker compose up
+cd src/exampleco/migrations
+PYTHONPATH=../../../ alembic upgrade head
+```
+
+### How to run the tests
+1. run the serverless app first in the separate terminal
+```shell
+make serverless-offline
+```
+2. run the unit test in the separate terminal
+```shell
+PYTHONPATH=. make test
+```
