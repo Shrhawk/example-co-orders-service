@@ -20,7 +20,7 @@ Session = get_session()
 
 
 @pytest.fixture(scope="function")
-def create_test_data():
+def create_test_records():
     """
     create 3 new services, order-items and orders
     Returns:

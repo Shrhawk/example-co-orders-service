@@ -9,7 +9,7 @@ class TestServices(TestCase):
     Tests for Services Apis
     """
     @pytest.mark.run(order=3)
-    def test_get_services_with_more_than_one_records_in_db(self, create_test_data):
+    def test_get_services_with_more_than_one_records_in_db(self, create_test_records):
         """
         Test GET Services with more than one records in database
         """
@@ -27,9 +27,9 @@ class TestServices(TestCase):
         assert response_data[2]["description"] == "Service Description 3"
         assert response_data[2]["price"] == 30
 
-    def test_get_service_by_id_without_any_data_in_db(self):
+    def test_get_service_by_id_without_any_record_in_db(self):
         """
-        Test GET Services without Any data in database
+        Test GET Services without Any record in database
         """
         response = self.client.get(self.base_url + "/service-by-id", params={"service-id": 99999})
         response_data = response.json()
@@ -38,7 +38,7 @@ class TestServices(TestCase):
 
     def test_get_service_by_id_with_valid_id(self):
         """
-        Test GET Services without Any data in database
+        Test GET Services without Any record in database
         """
         service = Session.query(Service).first()
         response = self.client.get(self.base_url + "/service-by-id", params={"service-id": service.id})
@@ -75,9 +75,9 @@ class TestServices(TestCase):
         assert response.status_code == BAD_REQUEST_STATUS_CODE
         assert response_data == {"message": "service-id is required with valid integer"}
 
-    def test_get_services_with_one_data_in_db(self):
+    def test_get_services_with_record_in_db(self):
         """
-        Test GET Services with One data in database
+        Test GET Services with record in database
         """
         response = self.client.get(self.base_url + "/services")
         response_data = response.json()
@@ -88,9 +88,9 @@ class TestServices(TestCase):
         assert response_data[0]["price"] == 10
 
     @pytest.mark.run(order=1)
-    def test_get_services_without_any_data_in_db(self):
+    def test_get_services_without_any_record_in_db(self):
         """
-        Test GET Services without Any data in database
+        Test GET Services without Any record in database
         """
         response = self.client.get(self.base_url + "/services")
         response_data = response.json()

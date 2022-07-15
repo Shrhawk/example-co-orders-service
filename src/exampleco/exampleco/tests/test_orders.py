@@ -20,18 +20,18 @@ class TestOrders(TestCase):
     """
 
     @pytest.mark.run(order=2)
-    def test_get_orders_without_any_data_in_db(self):
+    def test_get_orders_without_any_record_in_db(self):
         """
-        Test GET Orders without Any data in database
+        Test GET Orders without Any record in database
         """
         response = self.client.get(self.base_url + "/orders")
         response_data = response.json()
         assert response.status_code == OK_STATUS_CODE
         assert not response_data
 
-    def test_get_orders_with_one_data_in_db(self):
+    def test_get_orders_with_record_in_db(self):
         """
-        Test GET Orders with One data in database
+        Test GET Orders with record in database
         """
         response = self.client.get(self.base_url + "/orders")
         response_data = response.json()
@@ -41,9 +41,9 @@ class TestOrders(TestCase):
         assert response_data[0]["description"] == "Order Description 2"
         assert response_data[0]["price"] == 20
 
-    def test_get_orders_with_more_than_one_data_in_db(self):
+    def test_get_orders_with_more_than_one_record_in_db(self):
         """
-        Test GET Orders with more than one data in database
+        Test GET Orders with more than one record in database
         """
         response = self.client.get(self.base_url + "/orders")
         response_data = response.json()
@@ -59,9 +59,9 @@ class TestOrders(TestCase):
         assert response_data[1]["order_items"][0]["description"] == "Order Item Description 6"
         assert response_data[1]["order_items"][0]["price"] == 10
 
-    def test_get_order_by_id_without_any_data_in_db(self):
+    def test_get_order_by_id_without_any_record_in_db(self):
         """
-        Test GET Orders without Any data in database
+        Test GET Orders without Any record in database
         """
         response = self.client.get(self.base_url + "/orders/" + str(1))
         response_data = response.json()
@@ -70,7 +70,7 @@ class TestOrders(TestCase):
 
     def test_get_order_by_id_with_valid_id(self):
         """
-        Test GET Orders with data in database
+        Test GET Orders with record in database
         """
         order = Session.query(Order).filter(Order.price == 100).first()
         response = self.client.get(self.base_url + "/orders/" + str(order.id + 1))
@@ -208,7 +208,7 @@ class TestOrders(TestCase):
             'order_items': {'1': {'service_id': ['Service Id is invalid']}}
         }
 
-    def test_update_order_with_valid_data(self, create_test_data):
+    def test_update_order_with_valid_data(self):
         """
         Test PUT Orders with valid data in payload
         """
