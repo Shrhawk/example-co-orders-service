@@ -78,7 +78,7 @@ PYTHONPATH=../../../ alembic upgrade head
 ```shell
 make serverless-offline
 ```
-2. run the unit test in the separate terminal
+2. run the unit test in the separate terminal from root folder
 ```shell
 PYTHONPATH=. make test
 ```
