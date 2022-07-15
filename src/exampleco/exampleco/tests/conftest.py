@@ -1,4 +1,5 @@
 import datetime
+from typing import Union
 
 import pytest
 import requests
@@ -155,6 +156,17 @@ def clear_db():
     delete services, order-items and orders records
     Returns:
 
+    """
+    Session.query(OrderItems).delete()
+    Session.query(Order).delete()
+    Session.query(Service).delete()
+    Session.commit()
+
+
+def pytest_sessionfinish(session: "Session", exitstatus: Union[int, "ExitCode"]) -> None:
+    """
+    delete services, order-items and orders records after pytest session
+    Returns:
     """
     Session.query(OrderItems).delete()
     Session.query(Order).delete()
